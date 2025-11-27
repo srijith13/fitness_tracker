@@ -1,0 +1,51 @@
+import matplotlib.pyplot as plt
+from pathlib import Path
+from models import list_weights, list_exercises
+import flet as ft
+from datetime import datetime
+
+CHART_PATH = Path(__file__).parent / "data" / "chart.png"
+
+# def generate_weight_chart():
+#     data = list_weights()
+#     if not data:
+#         plt.figure()
+#         plt.text(0.5, 0.5, 'No weight data', ha='center')
+#         plt.savefig(CHART_PATH)
+#         return str(CHART_PATH)
+
+#     dates = [w['date'] for w in data]
+#     vals = [w['weight_kg'] for w in data]
+
+#     plt.figure(figsize=(6,3))
+#     plt.plot(dates, vals)
+#     plt.xticks(rotation=45)
+#     plt.tight_layout()
+#     plt.savefig(CHART_PATH)
+#     return str(CHART_PATH)
+
+def generate_weight_chart():
+
+    data = list_weights()
+
+    if not data:
+        return [], []   # no points, no labels
+
+     # Convert date strings → datetime
+    for w in data:
+        if isinstance(w["date"], str):
+            w["date"] = datetime.fromisoformat(w["date"]).date()
+
+
+    # Sort data by date
+    data = sorted(data, key=lambda w: w["date"])
+
+    xs = list(range(len(data)))                # X numeric values: 0,1,2,3...
+    ys = [w["weight_kg"] for w in data]        # Y values
+    labels = [w["date"].strftime("%m-%d")  for w in data ]     # labels for ticks
+
+    return list(zip(xs, ys)), labels
+
+
+
+

@@ -1,0 +1,21 @@
+# Core dependencies
+flet==0.22.0
+
+# Database
+sqlite-utils==3.36.0   # optional convenience, not required for sqlite3 (built-in)
+
+# For charts / future analytics
+matplotlib==3.9.0
+
+# Optional: PDF → CSV extraction (IFCT PDF extraction)
+# camelot-py==0.11.0
+# tabula-py==2.9.0
+
+# # Optional: Fuzzy search for food names
+# rapidfuzz==3.9.1
+
+# # Optional: CSV/Excel utilities
+# pandas==2.2.2
+
+# If the IFCT 2017 dataset uses JSON with unicode
+ujson==5.10.0
