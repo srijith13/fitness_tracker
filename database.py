@@ -27,13 +27,38 @@ def init_db():
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS muscle_groups (
+            id INTEGER PRIMARY KEY,
+            muscle_group TEXT,
+            mg_image BLOB
+        )
+        """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS exercise_list (
+            id INTEGER PRIMARY KEY,
+            exercise TEXT,
+            muscle_group_id INTEGER,
+            FOREIGN KEY(muscle_group_id) REFERENCES muscle_groups(id)
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS exercises (
             id INTEGER PRIMARY KEY,
             date TEXT NOT NULL,
             name TEXT NOT NULL,
             sets_completed INTEGER,
             sets_json TEXT,
-            notes TEXT
+            notes TEXT,
+            exercise_list_id INTEGER,
+            muscle_group_id INTEGER,
+            FOREIGN KEY(exercise_list_id) REFERENCES exercise_list(id)
+            FOREIGN KEY(muscle_group_id) REFERENCES muscle_groups(id)
         )
         """
     )

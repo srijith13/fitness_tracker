@@ -1,5 +1,8 @@
+/pycache/*
 _pycache__/*
 _pycache__/
+__pycache__
+*.pyc
 *.env
 data/*
 ui2.py
@@ -7,3 +10,5 @@ ui3.py
 ui4.py
 main2.py
 main3.py
+test.py
+/.vs

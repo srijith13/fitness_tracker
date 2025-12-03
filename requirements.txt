@@ -1,5 +1,5 @@
 # Core dependencies
-flet==0.22.0
+flet==0.28.3
 
 # Database
 sqlite-utils==3.36.0   # optional convenience, not required for sqlite3 (built-in)
