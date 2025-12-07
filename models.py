@@ -49,12 +49,12 @@ def list_muscle_exercises(muscle_id):
 
 # Exercises ----------------------------------------------------
 
-def add_exercise(date: str, name: str, sets_completed: int, sets: list, notes: str,muscle_group_id:int | None):
+def add_exercise(date: str, name: str, sets_completed: int, sets: list, notes: str,exercise_list_id:int,muscle_group_id:int | None):
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO exercises (date, name, sets_completed, sets_json, notes,  muscle_group_id) VALUES (?, ?, ?, ?, ?, ?)",
-        (date, name, sets_completed, json.dumps(sets), notes,muscle_group_id)
+        "INSERT INTO exercises (date, name, sets_completed, sets_json, notes, exercise_list_id,  muscle_group_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (date, name, sets_completed, json.dumps(sets), notes,exercise_list_id,muscle_group_id)
     )
     conn.commit()
     conn.close()

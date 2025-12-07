@@ -127,7 +127,20 @@ def build_app(page: ft.Page):
         add_weight_entry(s, val, weight_notes.value)
         weight_tf.value = ""
         weight_notes.value = ""
+                # --- FIX DROPDOWNS ---
+        # Reload muscle group dropdown
+        dropdown_api.set_options(muscle_options)
+        dropdown_api.clear()
+
+        # Clear and reload exercise dropdown
+        exercise_dropdown_api.set_options([])
+        exercise_dropdown_api.clear()
+
+        dropdown_api.refresh()
+        exercise_dropdown_api.refresh()
         refresh_all()
+
+        page.update()
 
     save_weight_btn = ft.ElevatedButton( text="Save weight",on_click=save_weight)
     
@@ -148,10 +161,12 @@ def build_app(page: ft.Page):
         page,
         "Muscle Group",
         muscle_options,
+        
         on_change=on_muscle_selected,
         width=300,
     )
     page.add(dropdown_control) 
+
     exercise_dropdown_control, exercise_dropdown_api = create_searchable_dropdown(
         page,
         "Exercise",
@@ -162,7 +177,6 @@ def build_app(page: ft.Page):
     sets_completed_tf = ft.TextField(label="Sets completed", width=140)
     ex_notes = ft.TextField(label="Notes", multiline=True)
     sets_container = ft.Column(spacing=8)
-
     
     def add_set_row(e=None):
         reps = ft.TextField(label="Reps", width=80)
@@ -191,7 +205,6 @@ def build_app(page: ft.Page):
                 return opt.text
         return None
 
-    # SAVE EXERCISE ENTRY
     def save_exercise(e):
         sel_date = date_picker.value or datetime.date.today()
         
@@ -209,12 +222,14 @@ def build_app(page: ft.Page):
             page.snack_bar.open = True
             page.update()
             return
+        
         ex_id = exercise_dropdown_api.get()
         if not ex_id:
             page.snack_bar = ft.SnackBar(ft.Text("Select an exercise"))
             page.snack_bar.open = True
             page.update()
             return
+        
         ex_name = exercise_dropdown_api.get_text()
 
         sets = []
@@ -223,12 +238,26 @@ def build_app(page: ft.Page):
             wt = float(r.controls[1].value or 0)
             sets.append({"reps": reps, "weight": wt})
 
-        add_exercise(s, ex_name, int(sets_completed_tf.value or 0), sets, ex_notes.value, mg_id)
-        dropdown_api.clear()
-        exercise_dropdown_api.clear()
-        sets_completed_tf.value = ""
+        add_exercise(s, ex_name, int(sets_completed_tf.value or 0), sets, ex_notes.value,ex_id, mg_id)
+
+        # CLEAR UI FIELDS
         sets_container.controls.clear()
+        sets_completed_tf.value = ""
         ex_notes.value = ""
+
+        # --- FIX DROPDOWNS ---
+        # Reload muscle group dropdown
+        dropdown_api.set_options(muscle_options)
+        dropdown_api.clear()
+
+        # Clear and reload exercise dropdown
+        exercise_dropdown_api.set_options([])
+        exercise_dropdown_api.clear()
+
+        dropdown_api.refresh()
+        exercise_dropdown_api.refresh()
+        
+        page.update()
         refresh_all()
 
     save_exercise_btn =  ft.ElevatedButton("Save Exercise", on_click=save_exercise)
@@ -355,9 +384,29 @@ def build_app(page: ft.Page):
                 stroke_width=4,
             )
         ]
-
+        
         # Extract only Y-values for left-axis labels
         ys = [y for _, y in points]
+
+        # Handle case where no data exists
+        if not ys or not labels:
+            # Provide a default empty chart or placeholder values
+            weight_chart.left_axis = ft.ChartAxis(
+                labels=[ft.ChartAxisLabel(value=0, label=ft.Text("0", size=12))],
+                labels_interval=1,
+                labels_size=40,
+            )
+
+            weight_chart.bottom_axis = ft.ChartAxis(
+                labels=[ft.ChartAxisLabel(value=0, label=ft.Text("No Data", size=12))],
+                labels_interval=1,
+                labels_size=32,
+            )
+
+            weight_chart.min_y = 0
+
+            page.update()
+            return
 
         # Build Y-axis labels (weights)
         weight_chart.left_axis = ft.ChartAxis(
@@ -552,7 +601,7 @@ def build_app(page: ft.Page):
                         ),
                     ),
 
-                    ft.Container(padding=15,expand=True,content=grid,),
+                    ft.Container( padding=15,expand=True,content=grid,),
                 ],
             )
         )
@@ -578,18 +627,25 @@ def build_app(page: ft.Page):
         def norm(d):
             if isinstance(d, str):
                 try:
-                    # Try date only (YYYY-MM-DD)
                     return datetime.date.fromisoformat(d)
                 except ValueError:
-                    # Try full datetime (YYYY-MM-DDTHH:MM:SS)
                     return datetime.datetime.fromisoformat(d).date()
             return d
+
         lw, a7, max_w, min_w= compute_stats()
 
         last_weight_label.value = f"{lw} kg" if lw else "-"
         avg7_label.value = f"{a7:.2f} kg" if a7 else "-"
         max_weights_label.value = f"{max_w:.2f} kg" if max_w else "-"
         min_weights_label.value = f"{min_w:.2f} kg" if min_w else "-"
+        dropdown_api.set_options(muscle_options)
+        dropdown_api.clear()
+
+        exercise_dropdown_api.set_options([])
+        exercise_dropdown_api.clear()
+
+        dropdown_api.refresh()
+        exercise_dropdown_api.refresh()
         stats_entry1 = card(
                     ft.Column(
                         [
@@ -620,8 +676,8 @@ def build_app(page: ft.Page):
                     ft.Column(
                         [
                             ft.Text("Log Exercise", weight=ft.FontWeight.BOLD),
-                            dropdown_api.control(),
-                            exercise_dropdown_api.control(),
+                            dropdown_control,
+                            exercise_dropdown_control,
                             sets_completed_tf,
                             add_set_btn,
                             sets_container,
@@ -666,11 +722,10 @@ def build_app(page: ft.Page):
         page.overlay.append(start_date)
         page.overlay.append(end_date)
 
-        results_column = ft.GridView(expand=True,runs_count=6,max_extent=150, spacing=5,run_spacing=10,)
+        results_column = ft.GridView(expand=True,runs_count=6,  max_extent=150, spacing=5,run_spacing=10,)
 
         def load_weight_history(days=7):
             results_column.controls.clear()
-
             today = datetime.date.today()
             from_date = today - datetime.timedelta(days=days)
 
@@ -762,7 +817,9 @@ def build_app(page: ft.Page):
         def clear_filter():
             start_date.value = None
             end_date.value = None
+
             load_weight_history(7)
+
             page.update()
 
         page.views.append(
@@ -819,22 +876,21 @@ def build_app(page: ft.Page):
 
         page.go("/weight_history")
 
+
     def open_exercise_history_page():
         start_date = ft.DatePicker()
         end_date = ft.DatePicker()
 
-        # Add to overlay (required)
         page.overlay.append(start_date)
         page.overlay.append(end_date)
-        
-        results_column = ft.GridView(expand=True,runs_count=6, max_extent=200,spacing=5,run_spacing=10,)
+
+        results_column = ft.GridView(expand=True,runs_count=6,  max_extent=200, spacing=5,run_spacing=10,)
 
         # ---------------------------------------
         # Load last N days
         # ---------------------------------------
         def load_ex_history(days=7):
             results_column.controls.clear()
-
             prs = detect_prs()
 
             today = datetime.date.today()
@@ -907,7 +963,6 @@ def build_app(page: ft.Page):
                 for r in ex:
                     d = r["date"]
 
-                    # Normalize stored date (date OR datetime OR string)
                     if isinstance(d, datetime.datetime):
                         d = d.date()
                     elif isinstance(d, str):
@@ -920,7 +975,6 @@ def build_app(page: ft.Page):
                     else:
                         continue
 
-                    # FINAL GUARANTEE: convert again to pure date
                     d = datetime.date(d.year, d.month, d.day)
 
                     if s <= d <= ed:
@@ -945,12 +999,11 @@ def build_app(page: ft.Page):
                         )
 
                 page.update()
-
+        
         def clear_filter():
             start_date.value = None
             end_date.value = None
 
-            # Reload last 7 days
             load_ex_history(7)
 
             page.update()
@@ -971,7 +1024,6 @@ def build_app(page: ft.Page):
                         bgcolor=ft.Colors.BLUE_500,
                     ),
 
-                     # ALL BUTTONS IN ONE ROW
                     ft.Row(
                         [
                             ft.FilledButton(
@@ -1013,17 +1065,20 @@ def build_app(page: ft.Page):
 
         page.go("/exercise_history")
 
+
     # ----------------------------
     # Refresh ALL UI components
     # ----------------------------
     def refresh_all():
         refresh_chart()
         refresh_timeline()
+        update_calendar()
+
         page.update()
 
 
     # -------------------------TRIAL STARTS HERE----------------------------------
-
+    
     def get_month_range(year: int, month: int):
         first_day = datetime.date(year, month, 1)
 
@@ -1189,7 +1244,7 @@ def build_app(page: ft.Page):
     def rebuild_layout():
         page.controls.clear()
 
-        # top bar
+        # top_bar
         top_row = ft.Row(
             [
                 title_label,
@@ -1247,7 +1302,6 @@ def build_app(page: ft.Page):
                     card(ft.Column([ft.Text("Log Weight", weight=ft.FontWeight.BOLD), weight_tf, weight_notes, save_weight_btn]), padding=12),
                     card(ft.Column([ft.Text("Log Exercise", weight=ft.FontWeight.BOLD), dropdown_api.control(),exercise_dropdown_api.control(), sets_completed_tf, add_set_btn, sets_container, ex_notes,save_exercise_btn,]), padding=12), 
                     card(main_history_buttons, padding=12),
-
                 ],
                 spacing=12,
                 scroll=ft.ScrollMode.AUTO,
@@ -1259,11 +1313,11 @@ def build_app(page: ft.Page):
             center_col = ft.Container(center_panel, width=625, padding=6)
             right_col = ft.Container(right_panel, width=400, padding=6)
 
-            main_row = ft.Row([left_col, center_col, right_col], expand=True, spacing=12) 
+            main_row = ft.Row([left_col, center_col, right_col], expand=True, spacing=12) # , right_col
             page.add(top_row, ft.Divider(height=8), main_row)
+
 
         refresh_all()
         page.update()
 
-    # initial layout build
     rebuild_layout()

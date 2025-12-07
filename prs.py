@@ -483,7 +483,8 @@ def create_searchable_dropdown(
         if on_change:
             on_change(key)
 
-        main.update()       # SAFE
+        # main.update()       # SAFE
+        page.update()
 
     wrapper = ft.Container(content=main)
 
@@ -511,7 +512,8 @@ def create_searchable_dropdown(
                 if _k == k:
                     selected_key["value"] = k
                     display.value = _t
-                    main.update()
+                    # main.update()
+                    page.update()
                     return True
             return False
 
@@ -532,7 +534,8 @@ def create_searchable_dropdown(
             nonlocal options
             options = new_options
             build_list(options)
-            main.update()
+            # main.update()
+            page.update()
             # If dropdown is open, re-filter
             if expanded["value"] and is_mounted["value"]:
                 filter_list()
@@ -542,7 +545,8 @@ def create_searchable_dropdown(
                 inner_list.update()
 
         def refresh(self):
-            main.update()
+            # main.update()
+            page.update()
 
         def control(self):
             return wrapper

@@ -63,5 +63,23 @@ def init_db():
         """
     )
 
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS prs (
+            id INTEGER PRIMARY KEY,
+            muscle_group_id INTEGER NOT NULL,
+            exercise_id INTEGER NOT NULL,
+            exercise_list_id INTEGER NOT NULL,
+            best_weight REAL,
+            best_reps INTEGER,
+            last_updated TEXT  NOT NULL,
+            FOREIGN KEY(muscle_group_id) REFERENCES muscle_groups(id)
+            FOREIGN KEY(exercise_id) REFERENCES exercises(id)
+            FOREIGN KEY(exercise_list_id) REFERENCES exercise_list(id)
+        );
+
+        """
+    )
+
     conn.commit()
     conn.close()
