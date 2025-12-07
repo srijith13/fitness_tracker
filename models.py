@@ -21,6 +21,14 @@ def list_weights(limit=2000):
     conn.close()
     return [dict(r) for r in rows]
 
+def list_weights_date(start, end):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("select  * from weight WHERE  date BETWEEN ? AND ? ORDER BY date ASC LIMIT 31", (start, end))
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
 # Muscle Group ----------------------------------------------------
 
 def list_muscle_group():
@@ -85,6 +93,19 @@ def list_exercises_for_prs(id,limit=20):
         result.append(d)
     return result
 
+def list_exercises_date(start,end):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM exercises WHERE  date BETWEEN ? AND ? ORDER BY date ASC LIMIT 31", (start,end))
+    rows = cur.fetchall()
+    conn.close()
+
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["sets"] = json.loads(d["sets_json"] or "[]")
+        result.append(d)
+    return result
 # Auto PR detection --------------------------------------------------
 
 def detect_prs():
