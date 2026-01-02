@@ -1386,6 +1386,135 @@ def build_app(page: ft.Page):
 
     update_calendar()
 
+
+
+    def bmi_calculator():
+
+        result_text = ft.Text(size=22, weight=ft.FontWeight.BOLD)
+        category_text = ft.Text(size=16)
+
+        height_tf = ft.TextField(
+            label="Height (cm)",
+            keyboard_type=ft.KeyboardType.NUMBER,
+            prefix_icon=ft.Icons.HEIGHT,
+            width=300,
+        )
+
+        weight_tf = ft.TextField(
+            label="Weight (kg)",
+            keyboard_type=ft.KeyboardType.NUMBER,
+            prefix_icon=ft.Icons.MONITOR_WEIGHT,
+            width=300,
+        )
+
+        result_card = ft.Container(
+            padding=20,
+            border_radius=16,
+            bgcolor=ft.Colors.BLUE_500,
+            animate=ft.Animation(300, "easeOut"),
+            content=ft.Column(
+                [result_text, category_text],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            visible=False,
+        )
+
+        # -------------------------
+        # Event handler (CORRECT)
+        # -------------------------
+        def on_calculate_bmi(e):
+            try:
+                height_cm = float(height_tf.value)
+                weight = float(weight_tf.value)
+
+                height_m = height_cm / 100
+                bmi = round(weight / (height_m ** 2), 1)
+
+                if bmi < 18.5:
+                    category = "Underweight"
+                    color = ft.Colors.BLUE_400
+                elif bmi < 25:
+                    category = "Normal"
+                    color = ft.Colors.GREEN_500
+                elif bmi < 30:
+                    category = "Overweight"
+                    color = ft.Colors.ORANGE_500
+                else:
+                    category = "Obese"
+                    color = ft.Colors.RED_500
+
+                result_text.value = f"BMI: {bmi}"
+                result_text.color = color
+                category_text.value = category
+                category_text.color = color
+
+                result_card.visible = True
+                result_card.opacity = 1
+                result_card.update()
+
+            except Exception:
+                result_text.value = "Invalid input"
+                result_text.color = ft.Colors.RED_500
+                category_text.value = ""
+                result_card.visible = True
+
+            page.update()
+
+         # -------- Clear handler --------
+        def on_clear(e):
+            height_tf.value = ""
+            weight_tf.value = ""
+            result_text.value = ""
+            category_text.value = ""
+            result_card.visible = False
+            page.update()
+
+        calculate_btn = ft.FilledButton(
+            "Calculate BMI",
+            icon=ft.Icons.CALCULATE,
+            on_click=on_calculate_bmi,
+            style=ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=14),
+                padding=16,
+            ),
+        )
+
+        clear_btn = ft.OutlinedButton(
+            "Clear",
+            icon=ft.Icons.CLEAR,
+            on_click=on_clear,
+        )
+
+        # ✅ IMPORTANT: RETURN the layout
+        return ft.Column(
+            [
+                ft.Text("BMI Calculator", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text(
+                    "Check your Body Mass Index",
+                    size=14,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                ),
+                ft.Container(height=10),
+                height_tf,
+                weight_tf,
+                ft.Container(height=10),
+                ft.Row(
+                    [calculate_btn, clear_btn],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=12,
+                ),
+                ft.Container(height=20),
+                result_card,
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=12,
+        )
+    
+    main_bmi_buttons = ft.Container(
+        content=bmi_calculator(),
+        alignment=ft.alignment.center,
+        width=400,   # constrain width
+    )
     # -------------------------TRIAL ENDS HERE------------------------------------
 
     # ----------------------------
@@ -1435,6 +1564,7 @@ def build_app(page: ft.Page):
                 card(main_history_buttons),
                 card(calendar_row),
                 card(cal_switcher),
+                card(main_bmi_buttons),
             ],
             expand=True,
             scroll=ft.ScrollMode.AUTO
@@ -1450,6 +1580,7 @@ def build_app(page: ft.Page):
                     card(ft.Column([ft.Text("Log Weight", weight=ft.FontWeight.BOLD), weight_tf, weight_notes, save_weight_btn]), padding=12),
                     card(ft.Column([ft.Text("Log Exercise", weight=ft.FontWeight.BOLD), dropdown_api.control(),exercise_dropdown_api.control(), sets_completed_tf, add_set_btn, sets_container, ex_notes,save_exercise_btn,]), padding=12), 
                     card(main_history_buttons, padding=12),
+                    card(main_bmi_buttons),
                 ],
                 spacing=12,
                 scroll=ft.ScrollMode.AUTO,
