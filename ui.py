@@ -10,9 +10,10 @@ from models import (
     list_weights,
     add_exercise,
     list_exercises,
-    detect_prs,
     list_weights_date,
     list_exercises_date,
+    list_muscle_group_date,
+    list_mg_exercises_date,
 )
 from charts import generate_weight_chart
 from prs import get_muscle_groups,get_prs_for_muscle_group,create_searchable_dropdown,get_exercises_for_mg
@@ -161,12 +162,10 @@ def build_app(page: ft.Page):
         page,
         "Muscle Group",
         muscle_options,
-        
         on_change=on_muscle_selected,
         width=300,
     )
     page.add(dropdown_control) 
-
     exercise_dropdown_control, exercise_dropdown_api = create_searchable_dropdown(
         page,
         "Exercise",
@@ -229,7 +228,6 @@ def build_app(page: ft.Page):
             page.snack_bar.open = True
             page.update()
             return
-        
         ex_name = exercise_dropdown_api.get_text()
 
         sets = []
@@ -576,7 +574,13 @@ def build_app(page: ft.Page):
         )
 
         # --- Responsive GridView ---
-        grid = ft.GridView(expand=True,runs_count=6, max_extent=150,spacing=10,run_spacing=10,)
+        grid = ft.GridView(
+            expand=True,
+            runs_count=6,        
+            max_extent=150,      
+            spacing=10,
+            run_spacing=10,
+        )
 
         # Add tiles
         for ex_name, data in sorted_prs:
@@ -601,7 +605,11 @@ def build_app(page: ft.Page):
                         ),
                     ),
 
-                    ft.Container( padding=15,expand=True,content=grid,),
+                    ft.Container(
+                        padding=15,
+                        expand=True,
+                        content=grid,  
+                    ),
                 ],
             )
         )
@@ -619,9 +627,6 @@ def build_app(page: ft.Page):
         timeline_column.controls.clear()
         stats_column.controls.clear()
 
-
-        w = list_weights()
-        ex = list_exercises()
 
         # Normalize dates
         def norm(d):
@@ -722,7 +727,7 @@ def build_app(page: ft.Page):
         page.overlay.append(start_date)
         page.overlay.append(end_date)
 
-        results_column = ft.GridView(expand=True,runs_count=6,  max_extent=150, spacing=5,run_spacing=10,)
+        results_column = ft.GridView(expand=True,runs_count=6,max_extent=150,spacing=5,run_spacing=10,)
 
         def load_weight_history(days=7):
             results_column.controls.clear()
@@ -768,8 +773,6 @@ def build_app(page: ft.Page):
                     s = raw_s
                 else:
                     s = datetime.date.fromisoformat(raw_s)
-
-                # --- FIX END: Normalize end date --- #
                 raw_e = end_date.value
                 if isinstance(raw_e, datetime.datetime):
                     ed = raw_e.date()
@@ -864,7 +867,6 @@ def build_app(page: ft.Page):
                         ],
                         spacing=10,
                     ),
-
                     ft.Divider(),
 
                     ft.Text("Last 7 Days", size=18, weight=ft.FontWeight.BOLD),
@@ -876,6 +878,17 @@ def build_app(page: ft.Page):
 
         page.go("/weight_history")
 
+    selected_context = {
+        "date": None,
+        "mg_id": None,
+        "mg_name": None,
+    }
+    
+    history_state = {
+        "mode": "default",
+        "start": None,
+        "end": None,
+    }
 
     def open_exercise_history_page():
         start_date = ft.DatePicker()
@@ -884,20 +897,152 @@ def build_app(page: ft.Page):
         page.overlay.append(start_date)
         page.overlay.append(end_date)
 
-        results_column = ft.GridView(expand=True,runs_count=6,  max_extent=200, spacing=5,run_spacing=10,)
+        # ---------------------------
+        # Animated screen switcher
+        # ---------------------------
+        screen_switcher = ft.AnimatedSwitcher(
+            content=ft.Container(),
+            expand=True,
+            duration=350,
+            transition=ft.AnimatedSwitcherTransition.FADE,
+        )
+
+        results_column = ft.GridView(
+            expand=True,
+            runs_count=6,          
+            max_extent=200,        
+            spacing=5,
+            run_spacing=10,
+        )   
+
+        # ---------------------------
+        # Tile: Muscle Group
+        # ---------------------------
+        def muscle_group_tile(mg_id, muscle_group, mg_image, date):
+            BASE = ft.Colors.BLUE_500
+            HOVER = ft.Colors.BLUE_600
+
+            def on_hover(e):
+                e.control.bgcolor = HOVER if e.data == "true" else BASE
+                e.control.scale = 1.05 if e.data == "true" else 1.0
+                e.control.update()
+
+            def on_click(e):
+                selected_context.update({
+                    "mg_id": mg_id,
+                    "mg_name": muscle_group,
+                    "date": date,
+                })
+                show_exercises_for_day()
+
+            return ft.Container(
+                width=150,
+                height=150,
+                bgcolor=BASE,
+                border_radius=18,
+                padding=12,
+                ink=True,
+                animate=ft.Animation(180, "easeOut"),
+                on_hover=on_hover,
+                on_click=on_click,
+                content=ft.Column(
+                    [
+                        
+                        ft.Image(src_base64=mg_image, width=55, height=55),
+                        ft.Text(
+                            muscle_group.title(),
+                            size=15,
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.WHITE,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.Text(
+                            date.strftime("%Y-%m-%d"),
+                            size=11,
+                            color=ft.Colors.WHITE70,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=8,
+                ),
+            )
+        
+        # ---------------------------
+        # Show exercises (animated)
+        # ---------------------------
+        def show_exercises_for_day():
+            mg_id = selected_context["mg_id"]
+            date = selected_context["date"]
+            mg_name = selected_context["mg_name"]
+
+            exercises = list_mg_exercises_date(mg_id, date)
+
+            column = ft.GridView(
+                expand=True,
+                runs_count=6,          
+                max_extent=200,        
+                spacing=5,
+                run_spacing=10,
+            )   
+
+            for r in exercises:
+                sets_txt = "\n".join(
+                    [f"{i+1}. {s['reps']} reps @ {s['weight']}kg"
+                    for i, s in enumerate(r["sets"])]
+                )
+                pr_flag = " 🏆" if r["is_pr"] else ""
+
+                column.controls.append(
+                        card(
+                            ft.Column(
+                                [
+                                    # ft.Image(src_base64=mg_image, width=55, height=55),
+                                    ft.Text(f"{r['name']}{pr_flag}", size=18, weight=ft.FontWeight.BOLD),
+                                    ft.Text(sets_txt, size=12),
+                                ],
+                                alignment=ft.MainAxisAlignment.START,
+                            )
+                        )
+                    )
+
+            screen_switcher.content = ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.IconButton(
+                                ft.Icons.ARROW_BACK,
+                                on_click=lambda e: restore_previous_list()
+                            ),
+                            ft.Text(
+                                f"{mg_name.title()} -  {date}",
+                                size=18,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.START,
+                    ),
+                    column,
+                ],
+                expand=True,
+            )
+            page.update()
 
         # ---------------------------------------
         # Load last N days
         # ---------------------------------------
         def load_ex_history(days=7):
-            results_column.controls.clear()
-            prs = detect_prs()
+            history_state["mode"] = "default"
+            history_state["start"] = None
+            history_state["end"] = None
 
+            results_column.controls.clear()
             today = datetime.date.today()
             from_date = today - datetime.timedelta(days=days)
-            ex = list_exercises_date(from_date, today)
+            mg = list_muscle_group_date(from_date, today)
 
-            for r in ex:
+
+            for r in mg:
                 d = r["date"]
 
                 # Normalize date
@@ -908,26 +1053,16 @@ def build_app(page: ft.Page):
                         d = datetime.datetime.fromisoformat(d).date()
 
                 if d >= from_date:
-                    sets_txt = "\n".join(
-                        [f"{i+1}. {s['reps']} reps @ {s['weight']}kg" for i, s in enumerate(r["sets"])]
-                    )
-                    max_w = max([s["weight"] for s in r["sets"]]) if r["sets"] else 0
-
-                    pr_flag = " 🏆" if r["name"].lower() in prs and prs[r["name"].lower()] == max_w else ""
-
                     results_column.controls.append(
-                        card(
-                            ft.Column(
-                                [
-                                    ft.Text(f"{r['name']}{pr_flag}", size=18, weight=ft.FontWeight.BOLD),
-                                    ft.Text(str(d), size=11),
-                                    ft.Text(sets_txt, size=12),
-                                ],
-                                alignment=ft.MainAxisAlignment.START,
-                            )
+                        muscle_group_tile(
+                            r["id"],
+                            r["muscle_group"],
+                            r["mg_image"],
+                            d,
                         )
                     )
-
+            screen_switcher.content = results_column
+            
             page.update()
 
         load_ex_history(7)
@@ -956,11 +1091,14 @@ def build_app(page: ft.Page):
                 else:
                     ed = datetime.date.fromisoformat(raw_e)
 
-                results_column.controls.clear()
-                ex = list_exercises_date(s, ed)
-                prs = detect_prs()
+                history_state["mode"] = "filtered"
+                history_state["start"] = s
+                history_state["end"] = ed
 
-                for r in ex:
+                results_column.controls.clear()
+                mg = list_muscle_group_date(s, ed)
+
+                for r in mg:
                     d = r["date"]
 
                     if isinstance(d, datetime.datetime):
@@ -978,28 +1116,42 @@ def build_app(page: ft.Page):
                     d = datetime.date(d.year, d.month, d.day)
 
                     if s <= d <= ed:
-                        sets_txt = "\n".join(
-                            [f"{i+1}. {s['reps']} reps @ {s['weight']}kg" for i, s in enumerate(r["sets"])]
-                        )
-
-                        max_w = max([s["weight"] for s in r["sets"]]) if r["sets"] else 0
-                        pr_flag = " 🏆" if r["name"].lower() in prs and prs[r["name"].lower()] == max_w else ""
 
                         results_column.controls.append(
-                            card(
-                                ft.Column(
-                                    [
-                                        ft.Text(f"{r['name']}{pr_flag}", size=18, weight=ft.FontWeight.BOLD),
-                                        ft.Text(str(d), size=11),
-                                        ft.Text(sets_txt, size=12),
-                                    ],
-                                    alignment=ft.MainAxisAlignment.START,
-                                )
+                            muscle_group_tile(
+                                r["id"],
+                                r["muscle_group"],
+                                r["mg_image"],
+                                d,
                             )
                         )
-
                 page.update()
-        
+
+        def restore_previous_list():
+            if history_state["mode"] == "filtered":
+                s = history_state["start"]
+                ed = history_state["end"]
+
+                results_column.controls.clear()
+                mg = list_muscle_group_date(s, ed)
+
+                for r in mg:
+                    d = r["date"]
+                    if isinstance(d, str):
+                        d = datetime.date.fromisoformat(d)
+
+                    results_column.controls.append(
+                        muscle_group_tile(
+                            r["id"], r["muscle_group"], r["mg_image"], d
+                        )
+                    )
+
+                screen_switcher.content = results_column
+                page.update()
+            else:
+                load_ex_history(7)
+
+
         def clear_filter():
             start_date.value = None
             end_date.value = None
@@ -1053,12 +1205,11 @@ def build_app(page: ft.Page):
                         ],
                         spacing=10,
                     ),
-
                     ft.Divider(),
 
                     ft.Text("Last 7 Days", size=18, weight=ft.FontWeight.BOLD),
 
-                    results_column,
+                    screen_switcher,
                 ]
             )
         )
@@ -1078,7 +1229,6 @@ def build_app(page: ft.Page):
 
 
     # -------------------------TRIAL STARTS HERE----------------------------------
-    
     def get_month_range(year: int, month: int):
         first_day = datetime.date(year, month, 1)
 
@@ -1243,8 +1393,6 @@ def build_app(page: ft.Page):
     # ----------------------------
     def rebuild_layout():
         page.controls.clear()
-
-        # top_bar
         top_row = ft.Row(
             [
                 title_label,

@@ -1,6 +1,6 @@
 from datetime import datetime
-from models import list_weights, list_exercises_for_prs, list_muscle_group,list_muscle_exercises
-from charts import png_converter
+from models import list_weights, list_exercises_for_prs, list_muscle_group,list_muscle_exercises,png_converter
+# from charts import png_converter
 import flet as ft
 import json
 
@@ -32,23 +32,15 @@ def get_prs_for_muscle_group(id,muscle_group):
 
     exercises = list_exercises_for_prs(id)
 
-    prs = {}  # { "Bench Press": {"weight": 90, "date": <date>} }
+    prs = {} 
     for ex in exercises:
-        # if ex.get("muscle_group") != muscle_group:
-        #     continue
-        weight = 0
         name = ex.get("name")
-        sets = json.loads(ex["sets_json"])   # convert JSON string → list of dicts
-
-        for s in sets:
-            weight = max(weight, s.get("weight", 0))
             
         date = ex.get("date")
         if isinstance(date, str):
             date = datetime.fromisoformat(date).date()
 
-        if name not in prs or weight > prs[name]["weight"]:
-            prs[name] = {"weight": weight, "date": date}
+        prs[name] = {"weight": ex.get("best_weight") , "date": date}
 
     return prs
 
@@ -512,7 +504,6 @@ def create_searchable_dropdown(
                 if _k == k:
                     selected_key["value"] = k
                     display.value = _t
-                    # main.update()
                     page.update()
                     return True
             return False
@@ -534,7 +525,6 @@ def create_searchable_dropdown(
             nonlocal options
             options = new_options
             build_list(options)
-            # main.update()
             page.update()
             # If dropdown is open, re-filter
             if expanded["value"] and is_mounted["value"]:
@@ -545,7 +535,6 @@ def create_searchable_dropdown(
                 inner_list.update()
 
         def refresh(self):
-            # main.update()
             page.update()
 
         def control(self):

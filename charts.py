@@ -49,13 +49,7 @@ def generate_weight_chart():
 
     return list(zip(xs, ys)), labels
 
-def png_converter(ico_bytes):
-    # 2. Convert ICO → PNG in memory
-    ico_image = Image.open(io.BytesIO(ico_bytes))
-    png_buffer = io.BytesIO()
-    ico_image.save(png_buffer, format="PNG")
-    png_base64 = base64.b64encode(png_buffer.getvalue()).decode()
-    return png_base64
+
 
 
 
