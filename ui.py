@@ -11,6 +11,7 @@ from models import (
     add_exercise,
     list_exercises,
     list_weights_date,
+    list_cardio_date,
     list_exercises_date,
     list_muscle_group_date,
     list_mg_exercises_date,
@@ -259,6 +260,132 @@ def build_app(page: ft.Page):
         refresh_all()
 
     save_exercise_btn =  ft.ElevatedButton("Save Exercise", on_click=save_exercise)
+
+
+    # ----------------------------
+    # Time picker (must be overlay)
+    # ----------------------------
+    cardio_type_dd = ft.Dropdown(
+        label="Cardio Type",
+        width=300,
+        options=[
+            ft.dropdown.Option("Walk"),
+            ft.dropdown.Option("Brisk Walk"),
+            ft.dropdown.Option("Jog"),
+            ft.dropdown.Option("Run"),
+            ft.dropdown.Option("Other"),
+        ],
+    )
+    cardio_notes = ft.TextField(label="Notes", multiline=True)
+    cardio_time_picker = ft.TimePicker(value=datetime.time(0, 0), time_picker_entry_mode=ft.TimePickerEntryMode.INPUT,)
+    page.overlay.append(cardio_time_picker)
+
+    # ----------------------------
+    # Display field
+    # ----------------------------
+    cardio_time_display = ft.TextField(
+        label="Duration (HH:MM)",
+        read_only=True,
+        width=180,
+        value="00:00"
+    )
+
+    # ----------------------------
+    # Handle picker change
+    # ----------------------------
+    def on_time_change(e):
+        if cardio_time_picker.value:
+            h = cardio_time_picker.value.hour
+            m = cardio_time_picker.value.minute
+            cardio_time_display.value = f"{h:02d}:{m:02d}"
+            page.update()
+
+    cardio_time_picker.on_change = on_time_change
+
+    # ----------------------------
+    # Open picker explicitly
+    # ----------------------------
+    def open_time_picker(e):
+        cardio_time_picker.open = True
+        page.update()
+
+     # ----------------------------
+    # Clear Button
+    # ----------------------------
+    def clear_time(e):
+        cardio_time_picker.value = datetime.time(0, 0)
+        cardio_time_display.value = "00:00"
+        page.update()
+
+    # SAVE cardio ENTRY
+    def save_cardio(e):
+        sel_date = date_picker.value or datetime.date.today()
+
+        if isinstance(sel_date, datetime.datetime):
+            s = sel_date.date()
+        elif isinstance(sel_date, datetime.date):
+            s = sel_date
+        else:
+            s = datetime.date.fromisoformat(sel_date)
+        # print("date s",s.type())
+        if not cardio_type_dd.value:
+            page.snack_bar = ft.SnackBar(ft.Text("Select cardio type"))
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        if not cardio_time_picker.value:
+            page.snack_bar = ft.SnackBar(ft.Text("Select cardio duration"))
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        # Convert to string
+        duration = cardio_time_picker.value.strftime("%H:%M:%S")
+        add_cardio_entry(s,cardio_type_dd.value,cardio_notes.value,duration)
+
+        # ---- CLEAR ----
+        cardio_type_dd.value = None
+        cardio_time_picker.value = datetime.time(0, 0)
+        cardio_time_display.value = "00:00"
+        cardio_notes.value = ""
+        
+        # --- FIX DROPDOWNS ---
+        # Reload muscle group dropdown
+        dropdown_api.set_options(muscle_options)
+        dropdown_api.clear()
+
+        # Clear and reload exercise dropdown
+        exercise_dropdown_api.set_options([])
+        exercise_dropdown_api.clear()
+
+        dropdown_api.refresh()
+        exercise_dropdown_api.refresh()
+        refresh_all()
+
+        page.update()
+
+    save_cardio_btn = ft.ElevatedButton( text="Save cardio",on_click=save_cardio)
+
+    time_row = ft.Row(
+        [
+            cardio_time_display,
+
+            ft.IconButton(
+                icon=ft.Icons.ACCESS_TIME,
+                tooltip="Pick duration",
+                on_click=open_time_picker,
+            ),
+
+            ft.IconButton(
+                icon=ft.Icons.CLEAR,
+                tooltip="Clear duration",
+                on_click=clear_time,
+            ),
+        ],
+        spacing=6,
+        )
+
 
     # ----------------------------
     # Timeline (Scrollable History)
@@ -677,6 +804,17 @@ def build_app(page: ft.Page):
                         ]
                     )
                 )
+        stats_entry4 = card(
+                    ft.Column(
+                        [
+                            ft.Text("Log Cardio", weight=ft.FontWeight.BOLD),
+                            cardio_type_dd,
+                            cardio_notes,
+                            time_row,
+                            save_cardio_btn,
+                        ]
+                    )
+                )
         stats_entry3 = card(
                     ft.Column(
                         [
@@ -694,6 +832,7 @@ def build_app(page: ft.Page):
             
         stats_column.controls.append(stats_entry1)
         stats_column.controls.append(stats_entry2)
+        stats_column.controls.append(stats_entry4)
         stats_column.controls.append(stats_entry3)
 
 
@@ -1244,21 +1383,26 @@ def build_app(page: ft.Page):
     # GLOBAL LISTS (will refresh every month)
     exercise_days = set()
     weight_days = set()
+    cardio_days = set()
 
 
     # -----------------------------------------
     # 2.  LOAD DATA FOR WHOLE MONTH (CALL DB)
     # -----------------------------------------
     def load_month_data(first_day, last_day):
-        global exercise_days, weight_days
+        global exercise_days, weight_days,cardio_days
 
         # Clear previous values
         exercise_days = set()
         weight_days = set()
+        cardio_days = set()
+
 
         # ---- Call your DB functions ----
         exercise_records = list_exercises_date(first_day, last_day)
         weight_records   = list_weights_date(first_day, last_day)
+        cardio_records   = list_cardio_date(first_day, last_day)
+
 
         # ---- Convert DB dates into sets of day numbers ----
         for ex in exercise_records:
@@ -1268,20 +1412,32 @@ def build_app(page: ft.Page):
         for w in weight_records:
             dt = datetime.date.fromisoformat(w["date"]).day
             weight_days.add(dt)
+        
+        for c in cardio_records:
+            dt = datetime.date.fromisoformat(c["date"]).day
+            cardio_days.add(dt)
 
 
     # ------------------------------
     # 3.  ICON FOR A SINGLE DAY
     # ------------------------------
     def get_day_icon(day):
-        global exercise_days, weight_days
-        if day in exercise_days and day in weight_days:
-            return "✔️"
+        global exercise_days, weight_days,cardio_days
+        if day in exercise_days and day in weight_days and day in cardio_days:
+            return ft.Text("✔️",size=16,tooltip="Gym workout + Cardio + Weight measurement",)
+        elif  day in exercise_days and day in cardio_days:
+            return ft.Text("🔥",size=16,tooltip="Gym workout + Cardio",)
+        elif day in exercise_days and day in weight_days:
+            return ft.Text("💪",size=16,tooltip="Gym workout + Weight measurement",)
+        elif day in weight_days and day in cardio_days:
+            return ft.Text("⚡",size=16,tooltip="Cardio + Weight measurement",)
         elif day in exercise_days:
-            return "🏋️"
+            return ft.Text("🏋️",size=16,tooltip="Gym workout",)
         elif day in weight_days:
-            return "⚖️"
-        return ""
+            return ft.Text("⚖️",size=16,tooltip="Weight measurement",)
+        elif day in cardio_days:
+            return ft.Text("🏃",size=16,tooltip="Cardio",)
+        return None
 
 
     # ------------------------------
@@ -1297,6 +1453,14 @@ def build_app(page: ft.Page):
                 if day == 0:
                     r.controls.append(ft.Container(width=45, height=45))
                 else:
+                    icon = get_day_icon(day)
+
+                    controls = [
+                        ft.Text(str(day), size=13, weight=ft.FontWeight.BOLD)
+                    ]
+
+                    if icon:
+                        controls.append(icon)
                     r.controls.append(
                         ft.Container(
                             width=45,
@@ -1307,10 +1471,7 @@ def build_app(page: ft.Page):
                             content=ft.Column(
                                 alignment=ft.MainAxisAlignment.CENTER,
                                 spacing=0,
-                                controls=[
-                                    ft.Text(str(day), size=13, weight="bold"),
-                                    ft.Text(get_day_icon(day), size=16),
-                                ],
+                                controls=controls,
                             ),
                         )
                     )
@@ -1578,6 +1739,7 @@ def build_app(page: ft.Page):
                     card(ft.Column([stat_block("Last weight", last_weight_label.value, ""), stat_block("7-day avg", avg7_label.value, "")]), padding=12),
                     card(ft.Column([ft.Text("Progress", weight=ft.FontWeight.BOLD), weight_chart]), padding=12),
                     card(ft.Column([ft.Text("Log Weight", weight=ft.FontWeight.BOLD), weight_tf, weight_notes, save_weight_btn]), padding=12),
+                    card(ft.Column([ft.Text("Log Cardio", weight=ft.FontWeight.BOLD),cardio_type_dd,cardio_notes,time_row,save_cardio_btn,]), padding=12),
                     card(ft.Column([ft.Text("Log Exercise", weight=ft.FontWeight.BOLD), dropdown_api.control(),exercise_dropdown_api.control(), sets_completed_tf, add_set_btn, sets_container, ex_notes,save_exercise_btn,]), padding=12), 
                     card(main_history_buttons, padding=12),
                     card(main_bmi_buttons),

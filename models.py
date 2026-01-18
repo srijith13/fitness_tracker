@@ -16,7 +16,7 @@ def add_weight_entry(date: str, weight_kg: float, notes: str | None):
     conn.commit()
     conn.close()
 
-def list_weights(limit=2000):
+def list_weights(limit=100):
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("SELECT * FROM weight ORDER BY date ASC LIMIT ?", (limit,))
@@ -31,6 +31,35 @@ def list_weights_date(start, end):
     rows = cur.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+# Cardio ------------------------------------------------------
+
+def add_cardio_entry(date: str, cardio_name: str, notes: str, cardio_time: str | None):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO cardio (date, cardio_name, cardio_time, notes) VALUES (?, ?, ?, ?)",
+        (date, cardio_name, cardio_time, notes)
+    )
+    conn.commit()
+    conn.close()
+
+def list_cardio(limit=100):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM cardio ORDER BY date ASC LIMIT ?", (limit,))
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def list_cardio_date(start, end):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("select  * from cardio WHERE  date BETWEEN ? AND ? ORDER BY date ASC LIMIT 31", (start, end))
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
 
 # Muscle Group ----------------------------------------------------
 

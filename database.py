@@ -27,6 +27,18 @@ def init_db():
 
     cur.execute(
         """
+        CREATE TABLE IF NOT EXISTS cardio (
+            id INTEGER PRIMARY KEY,
+            date TEXT NOT NULL,
+            cardio_name Text NOT NULL,
+            cardio_time TEXT NOT NULL,
+            notes TEXT
+        )
+        """
+    )
+
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS muscle_groups (
             id INTEGER PRIMARY KEY,
             muscle_group TEXT,
