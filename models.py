@@ -126,7 +126,7 @@ def current_best_set(conn, exercise_list_id):
             FROM expanded
         )
                 
-        SELECT max(weight), reps FROM ranked WHERE rn = 1 ORDER BY weight DESC
+        SELECT max(weight), max(reps) FROM ranked WHERE rn = 1 ORDER BY weight DESC
     """, (exercise_list_id,))
 
     row = cur.fetchone()
@@ -137,7 +137,6 @@ def update_best_set(conn,muscle_group_id,exercise_id,exercise_list_id,new_weight
     cur = conn.cursor()
     cur.execute("""SELECT id, best_weight, best_reps FROM prs WHERE exercise_list_id = ? """, (exercise_list_id,))
     row = cur.fetchone()
-
     if row is None:
         cur.execute("""INSERT INTO prs (muscle_group_id, exercise_id, exercise_list_id, best_weight, best_reps, last_updated)  VALUES (?, ?, ?, ?, ?, ?)""", 
                     (muscle_group_id,exercise_id,exercise_list_id,new_weight,new_reps,date))
@@ -146,8 +145,7 @@ def update_best_set(conn,muscle_group_id,exercise_id,exercise_list_id,new_weight
 
     pr_id, old_weight, old_reps = row
 
-    is_better = (new_weight > old_weight or(new_weight == old_weight and new_reps > old_reps))
-
+    is_better = (new_weight > old_weight or (new_weight == old_weight and new_reps > old_reps))
     if is_better:
         cur.execute("""UPDATE prs SET best_weight = ?,best_reps = ?,exercise_id = ?,last_updated = ? WHERE id = ?""", 
                     (new_weight,new_reps,exercise_id,date,pr_id))

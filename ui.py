@@ -9,6 +9,7 @@ from models import (
     add_weight_entry,
     list_weights,
     add_exercise,
+    add_cardio_entry,
     list_exercises,
     list_weights_date,
     list_cardio_date,
