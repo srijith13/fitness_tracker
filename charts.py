@@ -3,6 +3,9 @@ from pathlib import Path
 from models import list_weights, list_exercises
 import flet as ft
 from datetime import datetime
+import base64
+from PIL import Image
+import io
 
 CHART_PATH = Path(__file__).parent / "data" / "chart.png"
 
@@ -45,6 +48,8 @@ def generate_weight_chart():
     labels = [w["date"].strftime("%m-%d")  for w in data ]     # labels for ticks
 
     return list(zip(xs, ys)), labels
+
+
 
 
 
